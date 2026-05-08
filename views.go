@@ -61,8 +61,5 @@ func settingsView(m model) string {
 }
 
 func downloadView(m model) string {
-	if m.err != "" {
-		return fmt.Sprintf("  Error: %s\n", m.err)
-	}
-	return "  Downloading...\n"
+	return fmt.Sprintf("\n  %s Downloading...\n", m.spinner.View())
 }

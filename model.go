@@ -2,6 +2,7 @@
 package main
 
 import (
+	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -22,14 +23,14 @@ type model struct {
 
 	settingsFocus int
 	cursors       [4]int // video quality, audio quality, audio lang, subs lang
-
-	err string
+	spinner       spinner.Model
+	err           string
 }
 
 var videoQualities = []string{"1080p", "720p", "480p", "360p", "240p"}
 var audioQualities = []string{"192k", "128k", "96k"}
-var audioLangs = []string{"en-US", "ja-JP", "es-LA", "fr-FR", "de-DE", "pt-BR"}
-var subtitleLangs = []string{"en-US", "ja-JP", "es-LA", "fr-FR", "de-DE", "pt-BR", "off"}
+var audioLangs = []string{"en-US", "ja-JP", "es-419", "es-ES", "fr-FR", "de-DE", "pt-BR", "pt-PT", "it-IT", "ru-RU", "ko-KR", "zh-CN"}
+var subtitleLangs = []string{"off", "en-US", "ja-JP", "es-419", "es-ES", "fr-FR", "de-DE", "pt-BR", "pt-PT", "it-IT", "ru-RU", "ar-SA", "ko-KR", "zh-CN", "zh-TW", "zh-HK"}
 
 func initialModel() model {
 	url := textinput.New()
@@ -41,20 +42,23 @@ func initialModel() model {
 	cookie.Placeholder = "etp_rt cookie value"
 	cookie.Width = 60
 	cookie.EchoMode = textinput.EchoPassword
-
+	s := spinner.New()
+	s.Spinner = spinner.Dot
 	return model{
 		screen:      screenMain,
 		urlInput:    url,
 		cookieInput: cookie,
+		spinner:     s,
 	}
 }
 
 func (m model) Init() tea.Cmd {
-	return textinput.Blink
+	return tea.Batch(textinput.Blink, m.spinner.Tick)
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c":
@@ -114,6 +118,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		}
+	case downloadDoneMsg:
+		m.screen = screenMain
+		m.urlInput.SetValue("")
+		return m, nil
+
+	case downloadErrMsg:
+		m.err = msg.err.Error()
+		m.screen = screenMain
+		return m, nil
+
+	case spinner.TickMsg:
+		var cmd tea.Cmd
+		m.spinner, cmd = m.spinner.Update(msg)
+		return m, cmd
 	}
 
 	var cmd tea.Cmd
